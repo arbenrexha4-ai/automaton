@@ -152,7 +152,18 @@ export function createTokenCounter(): TokenCounter {
     let count: number;
     if (encoder) {
       try {
-        count = encoder.encode(normalizedText).length;
+        // BPE encoding is quadratic on long runs without whitespace
+        // (e.g. 20k repeated chars takes ~30s). Encode in fixed-size chunks
+        // so cost stays linear; boundary effects only add a few tokens.
+        const CHUNK = 1000;
+        if (normalizedText.length <= CHUNK) {
+          count = encoder.encode(normalizedText).length;
+        } else {
+          count = 0;
+          for (let i = 0; i < normalizedText.length; i += CHUNK) {
+            count += encoder.encode(normalizedText.slice(i, i + CHUNK)).length;
+          }
+        }
       } catch {
         count = Math.ceil(normalizedText.length / 3.5);
       }
