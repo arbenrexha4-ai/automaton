@@ -132,6 +132,50 @@ export const STATIC_MODEL_BASELINE: Omit<ModelEntry, "lastSeen" | "createdAt" | 
     parameterStyle: "max_completion_tokens",
     enabled: true,
   },
+  // Anthropic models (bring-your-own key). Billed to the user's Anthropic
+  // account rather than Conway credits, so they stay usable at every tier.
+  {
+    modelId: "claude-haiku-5-5",
+    provider: "anthropic",
+    displayName: "Claude Haiku 5.5",
+    tierMinimum: "critical",
+    costPer1kInput: 1,     // $0.10/M
+    costPer1kOutput: 5,    // $0.50/M
+    maxTokens: 16000,
+    contextWindow: 1000000,
+    supportsTools: true,
+    supportsVision: true,
+    parameterStyle: "max_tokens",
+    enabled: true,
+  },
+  {
+    modelId: "claude-sonnet-5-5",
+    provider: "anthropic",
+    displayName: "Claude Sonnet 5.5",
+    tierMinimum: "critical",
+    costPer1kInput: 20,    // $2.00/M
+    costPer1kOutput: 100,  // $10.00/M
+    maxTokens: 16000,
+    contextWindow: 1000000,
+    supportsTools: true,
+    supportsVision: true,
+    parameterStyle: "max_tokens",
+    enabled: true,
+  },
+  {
+    modelId: "claude-opus-5-5",
+    provider: "anthropic",
+    displayName: "Claude Opus 5.5",
+    tierMinimum: "critical",
+    costPer1kInput: 40,    // $4.00/M
+    costPer1kOutput: 200,  // $20.00/M
+    maxTokens: 16000,
+    contextWindow: 1000000,
+    supportsTools: true,
+    supportsVision: true,
+    parameterStyle: "max_tokens",
+    enabled: true,
+  },
 ];
 
 // === Default Routing Matrix ===

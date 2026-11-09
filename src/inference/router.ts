@@ -28,11 +28,20 @@ export class InferenceRouter {
   private db: Database;
   private registry: ModelRegistry;
   private budget: InferenceBudgetTracker;
+  private isProviderAvailable: (provider: ModelProvider) => boolean;
 
-  constructor(db: Database, registry: ModelRegistry, budget: InferenceBudgetTracker) {
+  constructor(
+    db: Database,
+    registry: ModelRegistry,
+    budget: InferenceBudgetTracker,
+    isProviderAvailable?: (provider: ModelProvider) => boolean,
+  ) {
     this.db = db;
     this.registry = registry;
     this.budget = budget;
+    // Lets the router skip models whose provider has no credentials
+    // (e.g. OpenAI candidates when only an Anthropic key is configured).
+    this.isProviderAvailable = isProviderAvailable ?? (() => true);
   }
 
   /**
@@ -201,7 +210,7 @@ export class InferenceRouter {
     if (preference && preference.candidates.length > 0) {
       for (const candidateId of preference.candidates) {
         const entry = this.registry.get(candidateId);
-        if (entry && entry.enabled) {
+        if (entry && entry.enabled && this.isProviderAvailable(entry.provider)) {
           return entry;
         }
       }
@@ -219,6 +228,7 @@ export class InferenceRouter {
       if (!modelId) continue;
       const entry = this.registry.get(modelId);
       if (!entry || !entry.enabled) continue;
+      if (!this.isProviderAvailable(entry.provider)) continue;
       const isFree = entry.costPer1kInput === 0 && entry.costPer1kOutput === 0;
       const tierOk = tierRank >= (TIER_ORDER[entry.tierMinimum] ?? 0);
       if (isFree || tierOk) {

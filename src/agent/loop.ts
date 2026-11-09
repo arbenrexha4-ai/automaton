@@ -122,7 +122,20 @@ export async function runAgentLoop(
     await discoverOllamaModels(ollamaBaseUrl, db.raw);
   }
   const budgetTracker = new InferenceBudgetTracker(db.raw, modelStrategyConfig);
-  const inferenceRouter = new InferenceRouter(db.raw, modelRegistry, budgetTracker);
+  // A provider is usable only if we hold credentials for it. OpenAI-style
+  // models fall back to Conway's OpenAI-compatible API when no OpenAI key is
+  // set, so they are usable with either key.
+  const hasOpenAiKey = !!config.openaiApiKey && !config.openaiApiKey.startsWith("sk-ant-");
+  const isProviderAvailable = (provider: string): boolean => {
+    switch (provider) {
+      case "anthropic": return !!config.anthropicApiKey;
+      case "ollama": return !!(process.env.OLLAMA_BASE_URL || config.ollamaBaseUrl);
+      case "openai": return hasOpenAiKey || !!config.conwayApiKey;
+      case "conway": return !!config.conwayApiKey;
+      default: return true;
+    }
+  };
+  const inferenceRouter = new InferenceRouter(db.raw, modelRegistry, budgetTracker, isProviderAvailable);
 
   // Optional orchestration bootstrap (requires V9 goals/task tables)
   let planModeController: PlanModeController | undefined;
@@ -596,7 +609,11 @@ export async function runAgentLoop(
       pendingInput = undefined;
 
       // ── Inference Call (via router when available) ──
-      const survivalTier = getSurvivalTier(financial.creditsCents);
+      // creditsCents === -1 means the balance API was unreachable (see above):
+      // route as low_compute rather than "dead", which would block all models.
+      const survivalTier = financial.creditsCents === -1
+        ? "low_compute"
+        : getSurvivalTier(financial.creditsCents);
       log(config, `[THINK] Routing inference (tier: ${survivalTier}, model: ${inference.getDefaultModel()})...`);
 
       const inferenceTools = toolsToInferenceFormat(tools);
