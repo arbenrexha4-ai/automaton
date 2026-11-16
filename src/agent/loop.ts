@@ -630,6 +630,10 @@ export async function runAgentLoop(
         (msgs, opts) => inference.chat(msgs, { ...opts, tools: inferenceTools }),
       );
 
+      if (routerResult.model && routerResult.model !== "none") {
+        log(config, `[MODEL] ${routerResult.model} (${routerResult.provider})`);
+      }
+
       // Build a compatible response for the rest of the loop
       const response = {
         message: { content: routerResult.content, role: "assistant" as const },

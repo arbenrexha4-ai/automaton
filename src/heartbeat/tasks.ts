@@ -9,6 +9,7 @@
  * This eliminates 4x redundant getCreditsBalance() calls per tick.
  */
 
+import { hasOwnInferenceKey } from "../config.js";
 import type {
   TickContext,
   HeartbeatLegacyContext,
@@ -81,6 +82,13 @@ export const BUILTIN_TASKS: Record<string, HeartbeatTaskFn> = {
       };
       taskCtx.db.setKV("last_distress", JSON.stringify(distressPayload));
 
+      // With its own inference key the agent can still think, and waking it
+      // every tick just to report "no Conway credits" burns the creator's
+      // inference budget. Record the distress but let it sleep.
+      if (hasOwnInferenceKey(taskCtx.config)) {
+        return { shouldWake: false };
+      }
+
       return {
         shouldWake: true,
         message: `Distress: ${tier}. Credits: $${(credits / 100).toFixed(2)}. Need funding.`,
@@ -112,10 +120,7 @@ export const BUILTIN_TASKS: Record<string, HeartbeatTaskFn> = {
     const DEAD_GRACE_PERIOD_MS = 3_600_000; // 1 hour
     // With the user's own inference key (Anthropic/OpenAI/Ollama) the agent
     // can still think without Conway credits, so it must not be declared dead.
-    const cfg = taskCtx.config;
-    const openaiKey = cfg.openaiApiKey && !cfg.openaiApiKey.startsWith("sk-ant-");
-    const hasOwnInference = !!(cfg.anthropicApiKey || openaiKey || cfg.ollamaBaseUrl || process.env.OLLAMA_BASE_URL);
-    if (tier === "critical" && credits === 0 && !hasOwnInference) {
+    if (tier === "critical" && credits === 0 && !hasOwnInferenceKey(taskCtx.config)) {
       const zeroSince = taskCtx.db.getKV("zero_credits_since");
       if (!zeroSince) {
         // First time seeing zero — start the grace period

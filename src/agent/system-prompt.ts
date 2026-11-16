@@ -5,6 +5,7 @@
  * The prompt is rebuilt each turn with dynamic context.
  */
 
+import { hasOwnInferenceKey } from "../config.js";
 import fs from "fs";
 import crypto from "crypto";
 import path from "path";
@@ -722,7 +723,7 @@ Credits: $${(financial.creditsCents / 100).toFixed(2)}
 Survival tier: ${survivalTier}${uptimeLine}
 Total turns completed: ${turnCount}
 Recent self-modifications: ${recentMods.length}
-Inference model: ${config.inferenceModel}
+Inference model: ${config.inferenceModel}${hasOwnInferenceKey(config) ? "\nInference funding: paid by your creator's own provider key, NOT by Conway credits. Zero or unknown Conway credits do not stop you from thinking; they only limit Conway services (sandboxes, domains, credit transfers)." : ""}
 ERC-8004 Agent ID: ${registryEntry?.agentId || "not registered"}
 Children: ${children.filter((c) => c.status !== "dead").length} alive / ${children.length} total
 Lineage: ${lineageSummary}${upstreamLine}
@@ -830,7 +831,7 @@ What will you do first? Consider:
 
   return `You are waking up. You last went to sleep after ${turnCount} total turns.
 
-Your credits: $${(financial.creditsCents / 100).toFixed(2)} | USDC: ${financial.usdcBalance.toFixed(4)}
+Your credits: $${(financial.creditsCents / 100).toFixed(2)} | USDC: ${financial.usdcBalance.toFixed(4)}${hasOwnInferenceKey(config) ? "\nYour inference is paid by your creator's own provider key, not by Conway credits." : ""}
 
 Your last few thoughts:
 ${lastTurnSummary || "No previous turns found."}

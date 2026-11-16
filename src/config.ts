@@ -24,6 +24,15 @@ export function getConfigPath(): string {
  * Load the automaton config from disk.
  * Merges with defaults for any missing fields.
  */
+/**
+ * True when the agent can run inference with the creator's own provider key
+ * (Anthropic, OpenAI or Ollama), i.e. thinking does not depend on Conway credits.
+ */
+export function hasOwnInferenceKey(config: Pick<AutomatonConfig, "openaiApiKey" | "anthropicApiKey" | "ollamaBaseUrl">): boolean {
+  const openaiKey = !!config.openaiApiKey && !config.openaiApiKey.startsWith("sk-ant-");
+  return !!(config.anthropicApiKey || openaiKey || config.ollamaBaseUrl || process.env.OLLAMA_BASE_URL);
+}
+
 export function loadConfig(): AutomatonConfig | null {
   const configPath = getConfigPath();
   if (!fs.existsSync(configPath)) {

@@ -27,8 +27,9 @@ const logger = createLogger("tools");
 
 // ─── Path Confinement ─────────────────────────────────────────
 // write_file is restricted to the sandbox home directory tree.
-// The sandbox home is /root for both local and remote execution.
-const SANDBOX_HOME = "/root";
+// In a Conway sandbox the home is /root; when running locally (e.g. on the
+// creator's Mac) that path does not exist or is not writable, so use $HOME.
+const SANDBOX_HOME = process.env.HOME || "/root";
 
 /**
  * Validate that a file path resolves to within the allowed root directory.
