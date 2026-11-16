@@ -110,7 +110,12 @@ export const BUILTIN_TASKS: Record<string, HeartbeatTaskFn> = {
     // transition to dead. This gives the agent time to receive funding before dying.
     // USDC can't go negative, so dead is only reached via this timeout.
     const DEAD_GRACE_PERIOD_MS = 3_600_000; // 1 hour
-    if (tier === "critical" && credits === 0) {
+    // With the user's own inference key (Anthropic/OpenAI/Ollama) the agent
+    // can still think without Conway credits, so it must not be declared dead.
+    const cfg = taskCtx.config;
+    const openaiKey = cfg.openaiApiKey && !cfg.openaiApiKey.startsWith("sk-ant-");
+    const hasOwnInference = !!(cfg.anthropicApiKey || openaiKey || cfg.ollamaBaseUrl || process.env.OLLAMA_BASE_URL);
+    if (tier === "critical" && credits === 0 && !hasOwnInference) {
       const zeroSince = taskCtx.db.getKV("zero_credits_since");
       if (!zeroSince) {
         // First time seeing zero — start the grace period
