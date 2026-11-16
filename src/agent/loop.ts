@@ -25,6 +25,7 @@ import type {
   ModelStrategyConfig,
 } from "../types.js";
 import { DEFAULT_MODEL_STRATEGY_CONFIG } from "../types.js";
+import { isConwayAuthFailed } from "../conway/inference.js";
 import type { PolicyEngine } from "./policy-engine.js";
 import { buildSystemPrompt, buildWakeupPrompt } from "./system-prompt.js";
 import { buildContextMessages, trimContext } from "./context.js";
@@ -130,8 +131,8 @@ export async function runAgentLoop(
     switch (provider) {
       case "anthropic": return !!config.anthropicApiKey;
       case "ollama": return !!(process.env.OLLAMA_BASE_URL || config.ollamaBaseUrl);
-      case "openai": return hasOpenAiKey || !!config.conwayApiKey;
-      case "conway": return !!config.conwayApiKey;
+      case "openai": return hasOpenAiKey || (!!config.conwayApiKey && !isConwayAuthFailed());
+      case "conway": return !!config.conwayApiKey && !isConwayAuthFailed();
       default: return true;
     }
   };

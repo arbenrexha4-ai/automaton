@@ -33,6 +33,13 @@ interface InferenceClientOptions {
 
 type InferenceBackend = "conway" | "openai" | "anthropic" | "ollama";
 
+// Set once Conway rejects our API key (401/403). From then on Conway is
+// treated as unavailable so routing can use the user's own provider keys.
+let conwayAuthFailed = false;
+export function isConwayAuthFailed(): boolean {
+  return conwayAuthFailed;
+}
+
 function isLoopbackHttpUrl(url: string | undefined): boolean {
   if (!url) return false;
   try {
@@ -71,7 +78,7 @@ export function createInferenceClient(
     // bypass the router (summarization, planning, low-compute mode) may ask
     // for a hardcoded model such as gpt-5-mini; fall back to the configured
     // default model (e.g. a Claude model with the user's own key) instead.
-    if (backend === "conway" && !apiKey && model !== options.defaultModel) {
+    if (backend === "conway" && (!apiKey || conwayAuthFailed) && model !== options.defaultModel) {
       const fallbackBackend = resolveInferenceBackend(options.defaultModel, keys);
       if (fallbackBackend !== "conway") {
         model = options.defaultModel;
@@ -127,14 +134,30 @@ export function createInferenceClient(
       backend === "ollama" ? "ollama" :
       apiKey;
 
-    return chatViaOpenAiCompatible({
-      model,
-      body,
-      apiUrl: openAiLikeApiUrl,
-      apiKey: openAiLikeApiKey,
-      backend,
-      httpClient,
-    });
+    try {
+      return await chatViaOpenAiCompatible({
+        model,
+        body,
+        apiUrl: openAiLikeApiUrl,
+        apiKey: openAiLikeApiKey,
+        backend,
+        httpClient,
+      });
+    } catch (err: any) {
+      // Invalid Conway key: remember it and retry once on the configured
+      // default model if that uses a different provider (e.g. Anthropic).
+      const msg = String(err?.message ?? "");
+      if (backend === "conway" && /: 40[13]:/.test(msg)) {
+        conwayAuthFailed = true;
+        if (
+          model !== options.defaultModel &&
+          resolveInferenceBackend(options.defaultModel, keys) !== "conway"
+        ) {
+          return chat(messages, { ...opts, model: options.defaultModel });
+        }
+      }
+      throw err;
+    }
   };
 
   /**
