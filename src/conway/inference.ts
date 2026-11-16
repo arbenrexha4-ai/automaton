@@ -61,15 +61,23 @@ export function createInferenceClient(
     messages: ChatMessage[],
     opts?: InferenceOptions,
   ): Promise<InferenceResponse> => {
-    const model = opts?.model || currentModel;
+    let model = opts?.model || currentModel;
     const tools = opts?.tools;
 
-    const backend = resolveInferenceBackend(model, {
-      openaiApiKey,
-      anthropicApiKey,
-      ollamaBaseUrl,
-      getModelProvider,
-    });
+    const keys = { openaiApiKey, anthropicApiKey, ollamaBaseUrl, getModelProvider };
+    let backend = resolveInferenceBackend(model, keys);
+
+    // Without a Conway API key the Conway backend cannot work. Callers that
+    // bypass the router (summarization, planning, low-compute mode) may ask
+    // for a hardcoded model such as gpt-5-mini; fall back to the configured
+    // default model (e.g. a Claude model with the user's own key) instead.
+    if (backend === "conway" && !apiKey && model !== options.defaultModel) {
+      const fallbackBackend = resolveInferenceBackend(options.defaultModel, keys);
+      if (fallbackBackend !== "conway") {
+        model = options.defaultModel;
+        backend = fallbackBackend;
+      }
+    }
 
     // Newer models (o-series, gpt-5.x, gpt-4.1) require max_completion_tokens.
     // Ollama always uses max_tokens.

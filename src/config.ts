@@ -69,6 +69,17 @@ export function loadConfig(): AutomatonConfig | null {
           ? raw.sandboxId.trim()
           : DEFAULT_CONFIG.sandboxId,
       conwayApiKey: apiKey,
+      // An Anthropic key pasted into the OpenAI field would make every
+      // GPT request fail with 401; treat it as unset.
+      openaiApiKey:
+        typeof raw.openaiApiKey === "string" && raw.openaiApiKey.startsWith("sk-ant-")
+          ? undefined
+          : raw.openaiApiKey,
+      anthropicApiKey:
+        raw.anthropicApiKey ||
+        (typeof raw.openaiApiKey === "string" && raw.openaiApiKey.startsWith("sk-ant-")
+          ? raw.openaiApiKey
+          : undefined),
       treasuryPolicy,
       modelStrategy,
       soulConfig,
